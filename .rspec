@@ -1,2 +1,4 @@
 --require rails_helper
+--format RspecJunitFormatter
+--out test_results/rspec.xml
 --color
