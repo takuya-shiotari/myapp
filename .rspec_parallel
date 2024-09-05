@@ -1,0 +1,6 @@
+--require rails_helper
+--format progress
+--format RspecJunitFormatter
+--out test_results/rspec<%= ENV['TEST_ENV_NUMBER'] %>.xml
+--profile 10
+--failure-exit-code=0
