@@ -26,8 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ci_rspec_process_total: [4]
-        ci_rspec_process_index: ['0,1', '2,3']
+        ci_node_index: [0, 1]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,13 +36,30 @@ jobs:
           bundler-cache: true
       - name: Setup DB
         run: bundle exec rails "parallel:setup[${CI_NODE_CPU_CORES}]"
+      - name: Download all test results for default branch
+        uses: dawidd6/action-download-artifact@v5
+        with:
+          name: test-result-[0-9]+
+          name_is_regexp: true
+          path: ${{ runner.temp }}/default-branch-test-results
+          branch: ${{ github.event.repository.default_branch }}
+          workflow_conclusion: success
+        continue-on-error: true
+      - name: Split tests by timings
+        uses: r7kamura/split-tests-by-timings@v0
+        id: split-tests
+        with:
+          reports: ${{ runner.temp }}/default-branch-test-results/**/test_results
+          glob: spec/**/*_spec.rb
+          index: ${{ matrix.ci_node_index }}
+          total: ${{ env.CI_NODE_TOTAL }}
       - name: Run rspec in parallel
-        run: bundle exec parallel_rspec -n ${{ matrix.ci_rspec_process_total }} --only-group ${{ matrix.ci_rspec_process_index }}
+        run: bundle exec parallel_rspec -n $CI_NODE_CPU_CORES ${{ steps.split-tests.outputs.paths }}
       - name: Upload test result
         if: ${{ success() || failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test-result-${{ matrix.ci_rspec_process_index }}
+          name: test-result-${{ matrix.ci_node_index }}
           path: |
             test_results/
             coverage/.resultset*.json
