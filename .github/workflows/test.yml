@@ -34,7 +34,34 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+      - name: Download previous JUnit XML reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-xml-reports-${{ matrix.ci_node_index }}
+          path: ${{ runner.temp }}
+      - name: Place previous JUnit XML reports in test_results
+        run: |
+          if [ -e ${{ runner.temp }}/junit-xml-reports-${{ matrix.ci_node_index }} ]; then
+            mkdir -p test_results
+            mv ${{ runner.temp }}/junit-xml-reports-${{ matrix.ci_node_index }}/* test_results/
+            find test_results/ -type f -name "*.xml" | sed 'p;s/.xml/_prev.xml/' | xargs -n2 mv
+            bundle exec rails runner "Dir.glob('test_results/**/*.xml').each { |path| File.write(path, Nokogiri(File.read(path)).tap { _1.css('testcase:has(failure)').remove }.to_s) }"
+          fi
+      - name: Download previous spec/examples.txt
+        uses: actions/download-artifact@v4
+        with:
+          pattern: examples-${{ matrix.ci_node_index }}
+          path: ${{ runner.temp }}
+      - name: Check whether only failed tests should be re-run
+        id: failed-tests-only
+        run: |
+          if [ -f ${{ runner.temp }}/examples-${{ matrix.ci_node_index }}/examples.txt ]; then
+            mv ${{ runner.temp }}/examples-${{ matrix.ci_node_index }}/examples.txt spec/examples.txt
+            sudo chown runner:runner spec/examples.txt
+            echo "value=true" >> $GITHUB_OUTPUT
+          fi
       - name: Download JUnit XML reports for default branch
+        if: ${{ !steps.failed-tests-only.outputs.value }}
         uses: dawidd6/action-download-artifact@v5
         with:
           name: junit-xml-reports-[0-9]+
@@ -44,6 +71,7 @@ jobs:
           workflow_conclusion: success
         continue-on-error: true
       - name: Split tests by timings
+        if: ${{ !steps.failed-tests-only.outputs.value }}
         uses: r7kamura/split-tests-by-timings@v0
         id: split-tests
         with:
@@ -54,14 +82,20 @@ jobs:
       - name: Setup DB
         run: bundle exec rails "parallel:setup[${CI_NODE_CPU_CORES}]"
       - name: Run rspec in parallel
+        if: ${{ !steps.failed-tests-only.outputs.value }}
         run: bundle exec parallel_rspec -n $CI_NODE_CPU_CORES ${{ steps.split-tests.outputs.paths }}
+      - name: Re-run rspec only failures
+        if: ${{ steps.failed-tests-only.outputs.value }}
+        run: bundle exec rspec --only-failures
       - name: Upload coverage/.resultset.json
+        if: ${{ !steps.failed-tests-only.outputs.value }}
         uses: actions/upload-artifact@v4
         with:
           name: coverage-resultset-json-${{ matrix.ci_node_index }}
           path: coverage/.resultset.json
           include-hidden-files: true
       - name: Upload JUnit XML reports
+        if: ${{ success() || failure() }}
         uses: actions/upload-artifact@v4
         with:
           name: junit-xml-reports-${{ matrix.ci_node_index }}
