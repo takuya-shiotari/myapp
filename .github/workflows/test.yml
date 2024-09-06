@@ -128,3 +128,42 @@ jobs:
         with:
           name: coverage
           path: coverage
+
+  report-failed-tests:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    if: ${{ success() || failure() }}
+    env:
+      REVIEWDOG_JSON_FILE_NAME: rspec_reviewdog.jsonl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Setup reviewdog
+        uses: reviewdog/action-setup@v1
+        with:
+          reviewdog_version: v0.20.0
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-result-*
+          path: ${{ runner.temp }}/test-results
+      - name: Generate RSspec reviewdog json
+        env:
+          JUNIT_XML_FILE_PATH_PATTERN: ${{ runner.temp }}/test-results/**/test_results/*.xml
+          REVIEWDOG_JSON_FILE_PATH: ${{ runner.temp }}/${{ env.REVIEWDOG_JSON_FILE_NAME }}
+        run: bundle exec ruby scripts/generate_rspec_reviewdog_json.rb
+      - name: Run rspec reviewdog
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+          REVIEWDOG_JSON_FILE_PATH: ${{ runner.temp }}/${{ env.REVIEWDOG_JSON_FILE_NAME }}
+        run: |
+          cat $REVIEWDOG_JSON_FILE_PATH | reviewdog -f=rdjsonl -reporter=github-check
