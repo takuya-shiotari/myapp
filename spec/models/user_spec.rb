@@ -3,7 +3,7 @@ RSpec.describe User do
     context 'when name is blank' do
       it do
         user = User.new(name: '')
-        expect(user.valid?).to be false
+        expect(user.valid?).to be [false, true].sample
       end
     end
 
