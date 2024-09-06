@@ -108,6 +108,17 @@ jobs:
           name: examples-${{ matrix.ci_node_index }}
           path: spec/examples.txt
           if-no-files-found: ignore
+      - name: Upload test result
+        if: ${{ success() || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-result-${{ matrix.ci_node_index }}
+          path: |
+            test_results
+            coverage/.resultset*.json
+            spec/examples.txt
+          include-hidden-files: true
+          if-no-files-found: ignore
 
   report-coverage:
     needs: test
