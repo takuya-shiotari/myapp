@@ -1,0 +1,80 @@
+name: Test
+
+on:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI_RSPEC_PROCESS_TOTAL: 4
+  CI_NODE_CPU_CORES: 2
+  RAILS_ENV: test
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        ci_rspec_process_index: ['0,1', '2,3']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Setup DB
+        run: bundle exec rails "parallel:setup[${CI_NODE_CPU_CORES}]"
+      - name: Run rspec in parallel
+        run: bundle exec parallel_rspec -n ${CI_RSPEC_PROCESS_TOTAL} --only-group ${{ matrix.ci_rspec_process_index }}
+      - name: Upload test result
+        if: ${{ success() || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-result-${{ matrix.ci_rspec_process_index }}
+          path: |
+            test_results/
+            coverage/.resultset*.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+
+  report-coverage:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    if: success() || failure()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-result-*
+          path: ${{ runner.temp }}/test-results
+      - name: Aggregate all coverage resultsets
+        run: bundle exec rails runner "require 'simplecov'; SimpleCov.collate(Dir['${{ runner.temp }}/test-results/**/coverage/.resultset*.json'], 'rails')"
+      - name: Report coverage by octocov
+        uses: k1LoW/octocov-action@v1
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
