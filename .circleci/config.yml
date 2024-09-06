@@ -1,0 +1,56 @@
+version: 2.1
+references:
+  sample_image: &sample_image
+    docker:
+      - image: cimg/ruby:3.1.2-browsers
+        entrypoint: /bin/sh
+        user: root
+  restore_bundler_cache: &restore_bundler_cache
+    restore_cache:
+      name: Restore bundler cache
+      key: gems-{{ checksum "Gemfile.lock" }}-{{ .Environment.COMMON_CACHE_KEY }}
+  bundle_install: &bundle_install
+    run:
+      name: Bundle Install
+      command: |
+        gem install bundler:2.4.8
+        bundle install --path=vendor/bundle --jobs=2 --retry=3
+  save_bundler_cache: &save_bundler_cache
+    save_cache:
+      name: Save bundler cache
+      key: gems-{{ checksum "Gemfile.lock" }}-{{ .Environment.COMMON_CACHE_KEY }}
+      paths:
+        - vendor/bundle
+
+jobs:
+  test:
+    <<: *sample_image
+    parallelism: 2
+    resource_class: medium+
+    working_directory: ~/sample
+    environment:
+      TZ: Asia/Tokyo
+      PARALLEL_TESTS_CONCURRENCY: 2
+    steps:
+      - checkout
+      - *restore_bundler_cache
+      - *bundle_install
+      - *save_bundler_cache
+      - run:
+          name: Set up DB
+          command: |
+            bundle exec rails "parallel:setup[${PARALLEL_TESTS_CONCURRENCY}]"
+      - run: |
+          mkdir test_results
+          TEST_FILES=$(circleci tests glob "spec/**/*_spec.rb")
+          echo "$TEST_FILES" | circleci tests run --command="xargs bundle exec parallel_rspec -n ${PARALLEL_TESTS_CONCURRENCY}" --verbose --split-by=timings
+      - store_test_results:
+          path: test_results
+      - store_artifacts:
+          path: coverage
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - test
