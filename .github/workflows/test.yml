@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group_index: ['0,1', '2,3']
+        test_job_index: [0, 1]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,13 +35,30 @@ jobs:
           bundler-cache: true
       - name: Setup DB
         run: bundle exec rails "parallel:setup[`nproc`]"
+      - name: Download all test results for default branch
+        uses: dawidd6/action-download-artifact@v5
+        with:
+          name: test-result-*
+          name_is_regexp: true
+          path: ${{ runner.temp }}/default-branch-test-results
+          branch: ${{ github.event.repository.default_branch }}
+          workflow_conclusion: success
+        continue-on-error: true
+      - name: Split tests by timings
+        uses: r7kamura/split-tests-by-timings@v0
+        id: split-tests
+        with:
+          reports: ${{ runner.temp }}/default-branch-test-results/**/test_results
+          glob: spec/**/*_spec.rb
+          index: ${{ matrix.test_job_index }}
+          total: ${{ env.TEST_JOB_PARALLEL_COUNT }}
       - name: Run rspec in parallel
-        run: bundle exec parallel_rspec -n $((${TEST_JOB_PARALLEL_COUNT} * `nproc`)) --only-group ${{ matrix.group_index }}
+        run: bundle exec parallel_rspec -n `nproc` ${{ steps.split-tests.outputs.paths }}
       - name: Upload test result
         if: ${{ success() || failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test-result-${{ matrix.group_index }}
+          name: test-result-${{ matrix.test_job_index }}
           path: |
             test_results/
             coverage/.resultset*.json
