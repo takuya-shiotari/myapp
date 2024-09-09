@@ -33,9 +33,35 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
+      - name: Download previous test result
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-result-${{ matrix.test_job_index }}
+          path: ${{ runner.temp }}
+      - name: Place previous test result
+        id: previous-test-result
+        env:
+          TEST_RESULT_DIR: ${{ runner.temp }}/test-result-${{ matrix.test_job_index }}
+        run: |
+          if [ -f ${TEST_RESULT_DIR}/spec/examples.txt ]; then
+            mv ${TEST_RESULT_DIR}/spec/examples.txt spec/examples.txt
+            echo "failed-tests-only=true" >> $GITHUB_OUTPUT
+          fi
+          suffix="_`date +%s`"
+          mkdir -p test_results coverage
+          if [ -e ${TEST_RESULT_DIR}/test_results ]; then
+            mv ${TEST_RESULT_DIR}/test_results/* test_results/
+            find test_results -type f -name "*.xml" | sed "p;s/.xml/${suffix}.xml/" | xargs -n2 mv
+            bundle exec rails runner "Dir['test_results/**/*.xml'].each { |path| File.write(path, Nokogiri(File.read(path)).tap { _1.css('testcase:has(failure)').remove }.to_s) }"
+          fi
+          if [ -e ${TEST_RESULT_DIR}/coverage ]; then
+            mv ${TEST_RESULT_DIR}/coverage/.resultset*.json coverage/
+            find coverage -type f -name "*.json" | sed "p;s/.json/${suffix}.json/" | xargs -n2 mv
+          fi
       - name: Setup DB
         run: bundle exec rails "parallel:setup[`nproc`]"
       - name: Download all test results for default branch
+        if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
         uses: dawidd6/action-download-artifact@v5
         with:
           name: test-result-*
@@ -45,6 +71,7 @@ jobs:
           workflow_conclusion: success
           if_no_artifact_found: warn
       - name: Split tests by timings
+        if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
         uses: r7kamura/split-tests-by-timings@v0
         id: split-tests
         with:
@@ -53,7 +80,11 @@ jobs:
           index: ${{ matrix.test_job_index }}
           total: ${{ env.TEST_JOB_PARALLEL_COUNT }}
       - name: Run rspec in parallel
+        if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
         run: bundle exec parallel_rspec -n `nproc` ${{ steps.split-tests.outputs.paths }}
+      - name: Re-run rspec only failures
+        if: ${{ steps.previous-test-result.outputs.failed-tests-only }}
+        run: bundle exec rspec --only-failures
       - name: Upload test result
         if: ${{ success() || failure() }}
         uses: actions/upload-artifact@v4
@@ -61,6 +92,7 @@ jobs:
           name: test-result-${{ matrix.test_job_index }}
           path: |
             test_results/
+            spec/examples.txt
             coverage/.resultset*.json
           include-hidden-files: true
           if-no-files-found: ignore
