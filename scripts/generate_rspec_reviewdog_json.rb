@@ -43,12 +43,7 @@ def generate_reviewdog_rows(junit_xml_file_path)
     {
       message: failure_elem.text,
       location: {
-        path: path,
-        range: {
-          start: {
-            line: full_description_to_line_number[elem.attr('name')]
-          }
-        }
+        path: path
       }
     }
   end
