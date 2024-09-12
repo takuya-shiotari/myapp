@@ -14,4 +14,11 @@ RSpec.describe User do
       end
     end
   end
+
+  describe '#name_or_default' do
+    it 'returns defaut' do
+        user = User.new(name: nil)
+        expect(user.name_or_default).to eq '(no name)'
+    end
+  end
 end

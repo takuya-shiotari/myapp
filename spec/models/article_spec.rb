@@ -9,4 +9,11 @@ RSpec.describe Article do
       end
     end
   end
+
+  describe '#normalized_title' do
+    it 'returns normalized title' do
+        article = Article.new(title: ' normalized  title  ')
+        expect(article.normalized_title).to eq 'normalized title'
+    end
+  end
 end
