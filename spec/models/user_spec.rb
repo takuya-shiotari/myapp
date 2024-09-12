@@ -21,4 +21,11 @@ RSpec.describe User do
         expect(user.name_or_default).to eq '(no name)'
     end
   end
+
+  describe '#flaky_test' do
+    it 'returns flaky test' do
+        user = User.new()
+        expect(user.flaky_test).to eq 'flaky test'
+    end
+  end
 end

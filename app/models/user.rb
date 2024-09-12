@@ -4,4 +4,10 @@ class User < ApplicationRecord
   def name_or_default
     name || '(no name)'
   end
+
+  def flaky_test
+    return if [false, true, false].sample
+
+    'flaky test'
+  end
 end
