@@ -17,7 +17,7 @@ defaults:
     shell: bash
 
 jobs:
-  report:
+  report-coverage:
     runs-on: ubuntu-20.04
     timeout-minutes: 5
     permissions:
@@ -27,7 +27,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Get run_id of test workflow
         id: get-run-id
         run: |
