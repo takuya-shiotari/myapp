@@ -44,7 +44,7 @@ jobs:
         with:
           name: coverage
           path: coverage
-          run-id: ${{ steps.get-run-id.outputs.test-run-id }}
+          run_id: ${{ steps.get-run-id.outputs.test-run-id }}
       - name: Coverage Report by octocov
         if: ${{ steps.download-coverage.outputs.found_artifact }}
         uses: k1LoW/octocov-action@v1
