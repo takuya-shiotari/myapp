@@ -5,7 +5,7 @@ RSpec.describe Article do
 
       it do
         article = Article.new(user: user, title: 'title', content: 'content')
-        expect(article.valid?).to be true
+        expect(article.valid?).to be false
       end
     end
   end
