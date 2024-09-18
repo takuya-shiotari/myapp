@@ -43,7 +43,7 @@ jobs:
         id: download-coverage
         if: ${{ steps.get-run-id.outputs.test-run-id != 'null' }}
         with:
-          name: coverage
+          name: ${{ env.COVERAGE_ARTIFACT_NAME }}
           path: coverage
           run_id: ${{ steps.get-run-id.outputs.test-run-id }}
       - name: Coverage Report by octocov
