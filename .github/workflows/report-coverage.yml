@@ -45,6 +45,7 @@ jobs:
           name: ${{ env.COVERAGE_ARTIFACT_NAME }}
           path: coverage
           run-id: ${{ steps.get-run-id.outputs.test-run-id }}
+          github-token: ${{ github.token }}
       - name: Coverage Report by octocov
         if: ${{ hashFiles('coverage/.resultset.json') }}
         uses: k1LoW/octocov-action@v1
