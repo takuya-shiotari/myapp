@@ -39,13 +39,12 @@ jobs:
             jq '.workflow_runs | sort_by(.id)[] | select(.conclusion == "success" or .conclusion == "failure") | .id' | \
             jq -sr '"test-run-id=\(last)"' >> $GITHUB_OUTPUT
       - name: Download coverage
-        uses: dawidd6/action-download-artifact@v6
-        id: download-coverage
+        uses: actions/download-artifact@v4
         if: ${{ steps.get-run-id.outputs.test-run-id != 'null' }}
         with:
           name: ${{ env.COVERAGE_ARTIFACT_NAME }}
           path: coverage
-          run_id: ${{ steps.get-run-id.outputs.test-run-id }}
+          run-id: ${{ steps.get-run-id.outputs.test-run-id }}
       - name: Coverage Report by octocov
-        if: ${{ steps.download-coverage.outputs.found_artifact }}
+        if: ${{ hashFiles('coverage/.resultset.json') }}
         uses: k1LoW/octocov-action@v1
