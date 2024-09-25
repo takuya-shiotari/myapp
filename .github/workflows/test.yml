@@ -166,3 +166,35 @@ jobs:
           REVIEWDOG_JSON_FILE_PATH: ${{ runner.temp }}/${{ env.REVIEWDOG_JSON_FILE_NAME }}
         run: |
           cat $REVIEWDOG_JSON_FILE_PATH | reviewdog -f=rdjsonl -reporter=github-check
+
+  build-github-pages:
+    needs: report-coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ format('refs/heads/{0}', github.event.repository.default_branch) == github.ref }}
+    steps:
+      - name: Download coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: coverage
+
+  deploy-github-pages:
+    needs: build-github-pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ format('refs/heads/{0}', github.event.repository.default_branch) == github.ref }}
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
