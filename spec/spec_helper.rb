@@ -29,3 +29,13 @@ RSpec.configure do |config|
 
   config.example_status_persistence_file_path = 'spec/examples.txt'
 end
+
+if ENV['DD_ENV'] == 'ci'
+  require 'datadog/ci'
+
+  Datadog.configure do |c|
+    c.ci.enabled = true
+    c.service = 'myapp-ci-test'
+    c.ci.instrument :rspec
+  end
+end

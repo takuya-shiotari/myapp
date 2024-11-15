@@ -17,12 +17,15 @@ gem 'sass-rails', '>= 6'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', '>= 1.4.4', require: false
 
+gem 'datadog', '~> 2.0'
+
 group :development, :test do
   gem 'pry-rails'
   gem 'pry-byebug'
   gem 'rspec-rails'
   gem 'simplecov', require: false
   gem 'parallel_tests'
+  gem 'datadog-ci', '~> 1.0'
 end
 
 group :development do

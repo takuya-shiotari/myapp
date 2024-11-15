@@ -26,6 +26,11 @@ jobs:
       fail-fast: false
       matrix:
         test_job_index: [0, 1]
+    env:
+      DD_CIVISIBILITY_AGENTLESS_ENABLED: true
+      DD_API_KEY: ${{ secrets.DD_API_KEY }}
+      DD_SITE: ${{ secrets.DD_SITE }}
+      DD_ENV: ci
     steps:
       - name: Checkout
         uses: actions/checkout@v4
