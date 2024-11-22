@@ -172,6 +172,64 @@ jobs:
         run: |
           cat $REVIEWDOG_JSON_FILE_PATH | reviewdog -f=rdjsonl -reporter=github-check
 
+  report-test-summary:
+    needs: test
+    runs-on: ubuntu-20.04
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    if: ${{ (success() || failure()) && format('refs/heads/{0}', github.event.repository.default_branch) == github.ref }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: test-result-*
+          path: ${{ runner.temp }}/test-results
+      - name: Merge JUnit XMLs
+        run: npx --yes junit-report-merger ${{ runner.temp }}/merged_rspec.xml "${{ runner.temp }}/test-results/**/test_results/*.xml"
+      - name: Upload merged JUnit XML
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged_rspec
+          path: ${{ runner.temp }}/merged_rspec.xml
+      - name: Download last 5 merged JUnit XMLs for default branch
+        working-directory: ${{ runner.temp }}
+        run: |
+          mkdir merged_rspecs artifacts
+          gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "/repos/${GITHUB_REPOSITORY}/actions/runs?branch=${{ github.event.repository.default_branch }}&per_page=5" | \
+            jq -r '.workflow_runs[] | .id' | \
+            while read run_id; do
+              gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/artifacts | \
+                jq -r '.artifacts[] | select(.name == "merged_rspec") | .id' | \
+                while read artifact_id; do
+                  gh api -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" /repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip > artifacts/${artifact_id}.zip && \
+                  unzip artifacts/$artifact_id.zip -d merged_rspecs/${artifact_id}
+                done
+            done
+      - name: Generate test summary JUnit XML
+        env:
+          JUNIT_XML_FILE_PATH_PATTERN: ${{ runner.temp }}/merged_rspecs/**/*.xml
+        run: |
+          bundle exec ruby scripts/generate_test_summary_junit_xml.rb > ${{ runner.temp }}/test_summary.xml
+      - name: Report test summary
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: ${{ runner.temp }}/test_summary.xml
+          check_name: RSpec
+          summary: true
+          flaky_summary: true
+
   build-github-pages:
     needs: report-coverage
     runs-on: ubuntu-latest
