@@ -229,6 +229,7 @@ jobs:
           check_name: RSpec
           summary: true
           flaky_summary: true
+          skip_annotations: true
 
   build-github-pages:
     needs: report-coverage
