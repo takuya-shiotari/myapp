@@ -1,0 +1,86 @@
+name: Coverage Diff
+
+on:
+  workflow_call:
+
+inputs:
+  base-branch:
+    default: ${{ github.event.repository.default_branch }}
+    required: false
+  comment-identifier:
+    default: <!-- coverage_diff -->
+    required: false
+  acceptable-coverage:
+    default: 80
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download octocov-report for default branch
+      uses: dawidd6/action-download-artifact@v6
+      with:
+        name: octocov-report
+        path: ${{ runner.temp }}/octocov-report
+        branch: ${{ inputs.base-branch }}
+        workflow_conclusion: success
+        if_no_artifact_found: warn
+    - name: Find pull request
+      uses: juliangruber/find-pull-request-action@v1
+      id: find-pull-request
+      with:
+        github-token: ${{ github.token }}
+        branch: ${{ github.head_ref || github.ref_name }}
+    - name: Hide PR comments
+      if: ${{ steps.find-pull-request.outputs.number }}
+      uses: kamatama41/hide-pr-comments-action@v0
+      with:
+        message_regex: ${{ inputs.comment-identifier }}
+        pr_number: ${{ steps.find-pull-request.outputs.number }}
+    - name: Display coverage details for sources with coverage changes
+      env:
+        GH_TOKEN: ${{ github.token }}
+        OLD_REPORT_PATH: ${{ runner.temp }}/octocov-report/report.json
+        NEW_REPORT_PATH: ${{ runner.temp }}/report.json
+        ACCEPTABLE_COVERAGE: 80
+      shell: bash
+      run: |
+        if [ ! -f ${OLD_REPORT_PATH} ]; then
+          exit 0
+        fi
+        current_dir=$(pwd)
+        octocov dump > ${NEW_REPORT_PATH}
+        diff -y -W 1000 --suppress-common-lines \
+          <(cat ${OLD_REPORT_PATH} | jq -r ".coverage.files[] | [.file, .covered / .total * 100] | @csv" | sort) \
+          <(cat ${NEW_REPORT_PATH} | jq -r ".coverage.files[] | [.file, .covered / .total * 100] | @csv" | sort) | \
+          awk -F "[\t ]*[|<>][\t ]*" -v pwd="$current_dir" '{
+            split($1, old, ",");
+            split($2, new, ",");
+            path = new[1];
+            gsub(pwd "/", "", path);
+            if (new[1] ~ /[^ \t]/) {
+              print "::group::" path ": " int(old[1] == new[1] ? old[2] : 0) "% -> " int(new[2]) "%";
+              system("octocov view "new[1]"");
+              print "::endgroup::";
+              if (new[2] < ${{ inputs.acceptable-coverage }}) {
+                path_to_coverage[path]["old"] = old[2];
+                path_to_coverage[path]["new"] = new[2];
+              }
+            }
+          } END {
+            if (length(path_to_coverage) > 0) {
+              body = "${{ inputs.comment-identifier }}\n";
+              body = body "### ⚠️ カバレッジが推奨値を下回っています ⚠️\n\n";
+              body = body "| File Path | Old Coverage | New Coverage |\n";
+              body = body "| --------- | ------------ | ------------ |\n";
+              for (path in path_to_coverage) {
+                url = "${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/" path;
+                old_coverage = path_to_coverage[path]["old"];
+                new_coverage = path_to_coverage[path]["new"];
+                body = body "| [" path "](" url ") | " (old_coverage ? old_coverage : "-") "% | " new_coverage "% |\n"
+              }
+              command = "echo \""body"\" | gh pr comment ${{ github.head_ref || github.ref_name }} -F - -R ${{ github.repository }}";
+              system(command);
+            }
+          }' || \
+          true

@@ -49,3 +49,6 @@ jobs:
       - name: Coverage Report by octocov
         if: ${{ hashFiles('coverage/.resultset.json') }}
         uses: k1LoW/octocov-action@v1
+      - name: Coverage Diff
+        if: ${{ hashFiles('coverage/.resultset.json') }}
+        uses: ./.github/actions/coverage-diff
