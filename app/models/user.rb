@@ -4,4 +4,12 @@ class User < ApplicationRecord
   def foo
     'foo'
   end
+
+  def email
+    "#{name}@example.com"
+  end
+
+  def bar
+    "#{name} bar"
+  end
 end
