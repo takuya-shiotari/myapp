@@ -38,9 +38,9 @@ rows = generate_table_rows(Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')])
 
 f.puts '## Flaky tests'
 
-if rows.size > 0
+if rows.empty?
+  f.puts ':white_check_mark: no flaky test'
+else
   output_table_row(f, %w[File Name Message Count], header: true)
   rows.each { |row| output_table_row(f, row.values_at(:file, :name, :message, :count)) }
-else
-  f.puts ':white_check_mark: no flaky test'
 end
