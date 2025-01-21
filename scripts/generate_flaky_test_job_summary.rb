@@ -19,6 +19,8 @@ def build_github_file_link(path)
   "[#{path}](#{url})"
 end
 
+f.puts '## Flaky tests'
+
 output_table_row(f, %w[File Name Message], header: true)
 
 Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')].each do |junit_xml_file_path|
