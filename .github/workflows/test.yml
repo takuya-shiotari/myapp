@@ -252,7 +252,12 @@ jobs:
           report_paths: ${{ runner.temp }}/summary_rspec.xml
           check_name: RSpec
           summary: true
-          flaky_summary: true
+          skip_annotations: true
+      - name: Report flaky test summary
+        env:
+          JUNIT_XML_FILE_PATH_PATTERN: ${{ runner.temp }}/summary_rspec.xml
+        run: |
+          bundle exec ruby scripts/generate_flaky_test_job_summary.rb >> $GITHUB_STEP_SUMMARY
 
   build-github-pages:
     needs: report-coverage
