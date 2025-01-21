@@ -13,7 +13,7 @@ end
 # @param path [String]
 # @return [String]
 def build_github_file_link(path)
-  return path if ENV.fetch('GITHUB_SHA', nil) || ENV.fetch('GITHUB_REPOSITORY')
+  return path if ENV.fetch('GITHUB_SHA', nil).nil? || ENV.fetch('GITHUB_REPOSITORY', nil).nil?
 
   url = URI.parse("https://github.com/#{ENV.fetch('GITHUB_REPOSITORY')}/blob/#{ENV.fetch('GITHUB_SHA')}/#{path}").normalize.to_s
   "[#{path}](#{url})"
@@ -21,10 +21,11 @@ end
 
 f.puts '## Flaky tests'
 
-output_table_row(f, %w[File Name Message], header: true)
+output_table_row(f, %w[File Name Message Count], header: true)
 
 Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')].each do |junit_xml_file_path|
   Nokogiri(File.open(junit_xml_file_path)).css('testsuite testcase:has(failure)').map do |elem|
-    output_table_row(f, [build_github_file_link(elem.attr('file')), elem.attr('name'), elem.css('failure').text])
+    failure_elem = elem.css('failure')
+    output_table_row(f, [build_github_file_link(elem.attr('file')), elem.attr('name'), failure_elem.first.text, failure_elem.count.to_s])
   end
 end
