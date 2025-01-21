@@ -19,18 +19,28 @@ def build_github_file_link(path)
   "[#{path}](#{url})"
 end
 
-f.puts '## Flaky tests'
-
-output_table_row(f, %w[File Name Message Count], header: true)
-
-has_flaky_tests = false
-Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')].each do |junit_xml_file_path|
-  Nokogiri(File.open(junit_xml_file_path)).css('testsuite testcase:has(failure)').map do |elem|
-    failure_elem = elem.css('failure')
-    output_table_row(f, [build_github_file_link(elem.attr('file')), elem.attr('name'), failure_elem.first.text, failure_elem.count.to_s])
-    has_flaky_tests = true
+# @param junit_xml_file_paths [Array<String>]
+# @return [Array<Hash{Symbol => String}>]
+def generate_table_rows(junit_xml_file_paths)
+  junit_xml_file_paths.flat_map do |junit_xml_file_path|
+    Nokogiri(File.open(junit_xml_file_path)).css('testsuite testcase:has(failure)').map do |elem|
+      {
+        file: build_github_file_link(elem.attr('file')),
+        name: elem.attr('name'),
+        message: elem.css('failure').first.text,
+        count: elem.css('failure').count.to_s,
+      }
+    end
   end
 end
-unless has_flaky_tests
+
+rows = generate_table_rows(Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')])
+
+f.puts '## Flaky tests'
+
+if rows.size > 0
+  output_table_row(f, %w[File Name Message Count], header: true)
+  rows.each { |row| output_table_row(f, row.values_at(:file, :name, :message, :count)) }
+else
   f.puts ':white_check_mark: no flaky test'
 end
