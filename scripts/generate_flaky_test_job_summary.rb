@@ -1,4 +1,5 @@
 require 'nokogiri'
+require 'uri'
 
 f = ENV['OUTPUT_FILE'] ? File.open(ENV['OUTPUT_FILE'], 'w') : STDOUT
 
