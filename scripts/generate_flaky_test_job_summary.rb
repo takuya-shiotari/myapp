@@ -23,9 +23,14 @@ f.puts '## Flaky tests'
 
 output_table_row(f, %w[File Name Message Count], header: true)
 
+has_flaky_tests = false
 Dir[ENV.fetch('JUNIT_XML_FILE_PATH_PATTERN')].each do |junit_xml_file_path|
   Nokogiri(File.open(junit_xml_file_path)).css('testsuite testcase:has(failure)').map do |elem|
     failure_elem = elem.css('failure')
     output_table_row(f, [build_github_file_link(elem.attr('file')), elem.attr('name'), failure_elem.first.text, failure_elem.count.to_s])
+    has_flaky_tests = true
   end
+end
+unless has_flaky_tests
+  f.puts ':white_check_mark: no flaky test'
 end
