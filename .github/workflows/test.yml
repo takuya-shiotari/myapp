@@ -55,13 +55,13 @@ jobs:
       DD_ENV: ci
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f # v1.227.0
         with:
           bundler-cache: true
       - name: Download previous test result
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: test-result-${{ matrix.test_job_index }}
           path: ${{ runner.temp }}
@@ -89,7 +89,7 @@ jobs:
         run: bundle exec rails "parallel:setup[`nproc`]"
       - name: Download all test results for default branch
         if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
         with:
           name: test-result-*
           name_is_regexp: true
@@ -98,7 +98,7 @@ jobs:
           if_no_artifact_found: warn
       - name: Split tests by timings
         if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
-        uses: r7kamura/split-tests-by-timings@v0
+        uses: r7kamura/split-tests-by-timings@b26a0ff99f1f2d520ff43a3da2778a64f648246c # v0.3.0
         id: split-tests
         with:
           reports: ${{ runner.temp }}/default-branch-test-results/**/test_results
@@ -113,7 +113,7 @@ jobs:
         run: bundle exec rspec --only-failures
       - name: Upload test result
         if: ${{ success() || failure() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-result-${{ matrix.test_job_index }}
           path: |
@@ -134,22 +134,22 @@ jobs:
     if: ${{ success() || failure() }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f # v1.227.0
         with:
           bundler-cache: true
       - name: Download all test results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: test-result-*
           path: ${{ runner.temp }}/test-results
       - name: Aggregate all coverage resultsets
         run: bundle exec rails runner "require 'simplecov'; SimpleCov.collate(Dir['${{ runner.temp }}/test-results/**/coverage/.resultset*.json'], 'rails')"
       - name: Report coverage by octocov
-        uses: k1LoW/octocov-action@v1
+        uses: k1LoW/octocov-action@73d561f65d59e66899ed5c87e4621a913b5d5c20 # v1.5.0
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage
           path: coverage
@@ -170,17 +170,17 @@ jobs:
       REVIEWDOG_JSON_FILE_NAME: rspec_reviewdog.jsonl
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f # v1.227.0
         with:
           bundler-cache: true
       - name: Setup reviewdog
-        uses: reviewdog/action-setup@v1
+        uses: reviewdog/action-setup@3f401fe1d58fe77e10d665ab713057375e39b887 # v1.3.0
         with:
           reviewdog_version: v0.20.0
       - name: Download all test results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: test-result-*
           path: ${{ runner.temp }}/test-results
@@ -210,20 +210,20 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f # v1.227.0
         with:
           bundler-cache: true
       - name: Download all test results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           pattern: test-result-*
           path: ${{ runner.temp }}/test-results
       - name: Merge JUnit XMLs
         run: npx --yes junit-report-merger ${{ runner.temp }}/merged_rspec.xml "${{ runner.temp }}/test-results/**/test_results/*.xml"
       - name: Upload merged JUnit XML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: merged_rspec
           path: ${{ runner.temp }}/merged_rspec.xml
@@ -247,7 +247,7 @@ jobs:
         run: |
           bundle exec ruby scripts/generate_test_summary_junit_xml.rb > ${{ runner.temp }}/summary_rspec.xml
       - name: Report test summary
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@97744eca465b8df9e6e33271cb155003f85327f1 # v5.5.0
         with:
           report_paths: ${{ runner.temp }}/summary_rspec.xml
           check_name: RSpec
@@ -266,12 +266,12 @@ jobs:
     if: ${{ format('refs/heads/{0}', github.event.repository.default_branch) == github.ref }}
     steps:
       - name: Download coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           name: coverage
           path: coverage
       - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: coverage
 
@@ -289,4 +289,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

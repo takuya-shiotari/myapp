@@ -18,7 +18,7 @@ runs:
   using: "composite"
   steps:
     - name: Download octocov-report for default branch
-      uses: dawidd6/action-download-artifact@v6
+      uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
       with:
         name: octocov-report
         path: ${{ runner.temp }}/octocov-report
@@ -26,14 +26,14 @@ runs:
         workflow_conclusion: success
         if_no_artifact_found: warn
     - name: Find pull request
-      uses: juliangruber/find-pull-request-action@v1
+      uses: juliangruber/find-pull-request-action@48b6133aa6c826f267ebd33aa2d29470f9d9e7d0 # v1.9.0
       id: find-pull-request
       with:
         github-token: ${{ github.token }}
         branch: ${{ github.head_ref || github.ref_name }}
     - name: Hide PR comments
       if: ${{ steps.find-pull-request.outputs.number }}
-      uses: kamatama41/hide-pr-comments-action@v0
+      uses: kamatama41/hide-pr-comments-action@70c821f75bb43054314bcb1dfcd95ff1f7166983 # v0.3.0
       with:
         message_regex: ${{ inputs.comment-identifier }}
         pr_number: ${{ steps.find-pull-request.outputs.number }}
