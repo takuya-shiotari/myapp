@@ -89,7 +89,7 @@ jobs:
         run: bundle exec rails "parallel:setup[`nproc`]"
       - name: Download all test results for default branch
         if: ${{ !steps.previous-test-result.outputs.failed-tests-only }}
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: dawidd6/action-download-artifact@07ab29fd4a977ae4d2b275087cf67563dfdf0295 # v9
         with:
           name: test-result-*
           name_is_regexp: true
